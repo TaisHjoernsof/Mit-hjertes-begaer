@@ -400,10 +400,15 @@
           .catch(err => {
             console.error('[ORIENT] requestPermission rejected: ' + err);
             setStatus(`Permission error: ${err}`, 'error');
+          })
+          .finally(() => {
+            console.log('[GEO] orientation dialog dismissed, now starting geolocation');
+            startGeolocation();
           });
       } else {
         console.log('[ORIENT] no requestPermission API, starting directly');
         startOrientation();
+        startGeolocation();
       }
     }
 
@@ -508,7 +513,6 @@
       // user gesture — audio.play() can consume the activation token.
       console.log('[INTRO] startIntro — requesting permissions');
       requestOrientationPermission();
-      startGeolocation();
       // Unlock audio while we're inside the user gesture so iOS allows play() later
       audio.play().then(() => { audio.pause(); audio.currentTime = 0; audioUnlocked = true; }).catch(() => {});
       introVideo.play().catch(finishIntro);
