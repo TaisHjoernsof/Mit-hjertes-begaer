@@ -150,8 +150,8 @@
       top: 16px;
       right: 16px;
       background: transparent;
-      border: 1px solid #6b5a2a;
-      color: #c8a84a;
+      border: 1px solid #c0392b;
+      color: #e74c3c;
       font-size: 18px;
       width: 38px;
       height: 38px;
@@ -163,7 +163,7 @@
       transition: background 0.2s;
       z-index: 100;
     }
-    #music-btn:active { background: rgba(107,90,42,0.3); }
+    #music-btn:active { background: rgba(192,57,43,0.3); }
 
     /* ── Intro video ── */
     #intro-overlay {
@@ -304,23 +304,17 @@
     // and it fires the first fix immediately after the user grants access).
     let geoStarted = false;
     function startGeolocation() {
-      console.log('[GEO] startGeolocation called, geoStarted=' + geoStarted);
       if (geoStarted) return;
       geoStarted = true;
       if (!navigator.geolocation) {
-        console.error('[GEO] navigator.geolocation not available');
         setStatus('Geolocation not supported', 'error');
         return;
       }
-      console.log('[GEO] calling watchPosition (highAccuracy)');
       navigator.geolocation.watchPosition(onPosition, onGeoError, {
         enableHighAccuracy: true,
         maximumAge: 5000,
       });
-      console.log('[GEO] calling getCurrentPosition (coarse fallback)');
-      navigator.geolocation.getCurrentPosition(onPosition, function(err) {
-        console.warn('[GEO] coarse getCurrentPosition error: code=' + err.code + ' msg=' + err.message);
-      }, {
+      navigator.geolocation.getCurrentPosition(onPosition, () => {}, {
         enableHighAccuracy: false,
         timeout: 8000,
         maximumAge: 60000,
@@ -328,9 +322,6 @@
     }
 
     function onPosition(pos) {
-      console.log('[GEO] onPosition: lat=' + pos.coords.latitude +
-        ' lng=' + pos.coords.longitude +
-        ' accuracy=' + pos.coords.accuracy + 'm');
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
       userLat = userLat == null ? lat : G_ALPHA * lat + (1 - G_ALPHA) * userLat;
@@ -339,8 +330,6 @@
     }
 
     function onGeoError(err) {
-      console.error('[GEO] watchPosition error: code=' + err.code +
-        ' (1=DENIED,2=UNAVAIL,3=TIMEOUT) msg=' + err.message);
       if (err.code === err.TIMEOUT) return;
       setStatus(`Location error: ${err.message}`, 'error');
     }
@@ -351,7 +340,6 @@
     let usingAbsolute = false;
 
     function startOrientation() {
-      console.log('[ORIENT] startOrientation — adding listeners');
       window.addEventListener('deviceorientationabsolute', onAbsoluteOrientation, true);
       window.addEventListener('deviceorientation', onRelativeOrientation, true);
     }
@@ -389,28 +377,16 @@
     // iOS 13+ requires explicit permission, triggered from a user gesture.
     // We call this from the intro tap so there's no extra button to press.
     function requestOrientationPermission() {
-      console.log('[ORIENT] requestOrientationPermission called');
-      console.log('[ORIENT] DeviceOrientationEvent exists: ' + (typeof DeviceOrientationEvent !== 'undefined'));
-      console.log('[ORIENT] requestPermission is function: ' + (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'));
       if (typeof DeviceOrientationEvent !== 'undefined' &&
           typeof DeviceOrientationEvent.requestPermission === 'function') {
-        console.log('[ORIENT] calling DeviceOrientationEvent.requestPermission()');
         DeviceOrientationEvent.requestPermission()
           .then(state => {
-            console.log('[ORIENT] requestPermission resolved: ' + state);
             if (state === 'granted') startOrientation();
             else setStatus('Orientation permission denied', 'error');
           })
-          .catch(err => {
-            console.error('[ORIENT] requestPermission rejected: ' + err);
-            setStatus(`Permission error: ${err}`, 'error');
-          })
-          .finally(() => {
-            console.log('[GEO] orientation dialog dismissed, now starting geolocation');
-            startGeolocation();
-          });
+          .catch(err => setStatus(`Permission error: ${err}`, 'error'))
+          .finally(() => startGeolocation());
       } else {
-        console.log('[ORIENT] no requestPermission API, starting directly');
         startOrientation();
         startGeolocation();
       }
@@ -444,7 +420,7 @@
     }
 
     function updateNeedle() {
-      if (userLat == null) { console.log('[NEEDLE] updateNeedle: userLat is null, waiting'); setStatus('Waiting for location...', ''); return; }
+      if (userLat == null) { setStatus('Waiting for location...', ''); return; }
 
       const bearing = calcBearing(userLat, userLng, TARGET_LAT, TARGET_LNG);
       const dist    = calcDistance(userLat, userLng, TARGET_LAT, TARGET_LNG);
@@ -515,12 +491,10 @@
       introStart.classList.add('hidden');
       // Order matters on iOS Safari: requestPermission must be FIRST in the
       // user gesture — audio.play() can consume the activation token.
-      console.log('[INTRO] startIntro — requesting permissions');
       requestOrientationPermission();
       // Unlock audio while we're inside the user gesture so iOS allows play() later
       audio.play().then(() => { audio.pause(); audio.currentTime = 0; audioUnlocked = true; }).catch(() => {});
       introVideo.play().catch(finishIntro);
-      console.log('[INTRO] startIntro done (async ops pending)');
     }
 
     introVideo.addEventListener('ended', finishIntro);
